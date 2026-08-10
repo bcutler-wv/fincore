@@ -118,15 +118,17 @@ test('formatAmount renders money to 2 decimals and survives junk', () => {
   assert.equal(formatAmount(0, 'USD'), '0.00 USD'); // a real zero still renders
 });
 
-test('buildHeartbeat sections the summary and colors by attention', () => {
+test('buildHeartbeat v2 leads with the snapshot and colors by attention', () => {
   const calm = buildHeartbeat('Fincore daily: 3 auto-categorized, 0 need your review.\nSnapshot: net worth $10.00, DTI 30.0%.');
   assert.equal(calm.embeds[0].title, 'Fincore daily');
-  assert.ok(calm.embeds[0].description.startsWith('3 auto-categorized'));
-  assert.ok(calm.embeds[0].description.includes('📊 Snapshot:')); // emoji sectioning (2026-07-19)
+  // Snapshot headline first; routine head counts fold into the quiet plumbing line.
+  assert.ok(calm.embeds[0].description.startsWith('📊 Net worth $10.00 · DTI 30.0%'));
+  assert.ok(calm.embeds[0].description.includes('🔧 3 categorized · 0 to review'));
   assert.equal(calm.embeds[0].color, 0x2e8b57);
 
   const alarmed = buildHeartbeat('Fincore daily: 0 auto-categorized, 0 need your review.\nSTALE FEEDS: bank:1:Checking (9d)');
   assert.equal(alarmed.embeds[0].color, 0xe0a500);
+  assert.ok(alarmed.embeds[0].description.includes('⚠️ stale feed: Checking (9d)'));
 
   // Other jobs keep their own name in the title, and failures read as failures.
   const backup = buildHeartbeat('Fincore backup FAILED: FINCORE_BACKUP_DIR /mnt/backups does not exist. Is the backup mount down?');
@@ -135,28 +137,35 @@ test('buildHeartbeat sections the summary and colors by attention', () => {
   assert.ok(backup.embeds[0].description.includes('FAILED'));
 });
 
-test('buildHeartbeat spaces section groups and drops the duplicate Schwab nag', () => {
+test('buildHeartbeat v2 compresses plumbing, keeps attention loud, dedupes prefixes and the Schwab nag', () => {
   const msg = [
     'Fincore daily: no new transactions to categorize.',
     'Sync: 2 imported.',
-    'Matching: 3 ambiguous queued.',
+    'Matching: 1 transfers matched, 5 ambiguous queued.',
+    'Valuations: 16 account balances ingested.',
     'Loans: 2 loan balance(s) already exact.',
-    'Tax set-aside: short $13,699.24.',
-    'Debts (avalanche): Discover $27,057.',
-    'Schwab flag: Schwab analytics token expired.',
+    'Tax set-aside: Tax set-aside short $13,599.24, 158d to checkpoint 2027-01-15.',
+    'Influx overdue: OVERDUE: no Redshirt deposit in 60d since 2026-06-11; expected by 2026-08-06. Buffer runway ~5.2 weeks.',
+    'Debts (avalanche): Discover $20,672 (~$491/mo) -> Apple $5,003 (~$106/mo) -> Affirm $4,483 (~$86/mo). Next strike target: Discover.',
+    'Playbook flag: STRAGGLER on Discover: 2026-08-04 $115.46 STATE FARM INSURANCE',
+    'Schwab flag: Schwab analytics token expired (net worth unaffected). Renew when convenient: npm run schwab-auth',
     'Schwab flag: Schwab token missing or expired; run: npm run schwab-auth',
-    'Snapshot: net worth $95,041.15, DTI 15.4%.',
+    'Snapshot: net worth $98,641.37, DTI 15.4% (partial basis). 12 data flags; run npm run snapshot for detail. STALE: schwab, schwab-positions/analytics-only (as of 2026-07-30).',
   ].join('\n');
   const d = buildHeartbeat(msg).embeds[0].description;
-  // Blank lines separate header, data plumbing, plan, flags, and snapshot.
   const groups = d.split('\n\n');
-  assert.equal(groups.length, 5);
-  assert.ok(groups[1].includes('Sync: 2 imported.') && groups[1].includes('Loans:'));
-  assert.ok(groups[2].includes('Tax set-aside') && groups[2].includes('Debts'));
-  assert.ok(groups[3].includes('Schwab analytics token expired'));
-  assert.ok(groups[4].startsWith('📊 Snapshot:'));
-  // Exactly one Schwab flag line survives.
-  assert.equal((d.match(/Schwab flag:/g) || []).length, 1);
+  // Snapshot headline, attention, plan, quiet plumbing: exactly four groups.
+  assert.equal(groups.length, 4);
+  assert.equal(groups[0], '📊 Net worth $98,641.37 · DTI 15.4% (partial)');
+  assert.ok(groups[1].includes('Influx OVERDUE: no Redshirt deposit in 60d'));
+  assert.ok(groups[1].includes('🚨 STRAGGLER on Discover'));
+  assert.ok(groups[2].includes('🧾 Tax set-aside: short $13,599.24'));
+  assert.ok(!d.includes('Tax set-aside: Tax set-aside')); // prefix rendered once
+  assert.ok(groups[3].includes('🔧 0 to review · sync 2 · match 1 · 5 held · val 16 · loans ✓'));
+  assert.ok(groups[3].includes('⚠️ 12 flags (npm run snapshot) · stale: schwab'));
+  assert.ok(!groups[3].includes('schwab-positions')); // detail entry collapsed into schwab
+  // The chronic Schwab nag survives exactly once, compact.
+  assert.equal((d.match(/Schwab token expired/g) || []).length, 1);
 });
 
 test('buildAsk labels deposits as deposits', () => {

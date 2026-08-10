@@ -95,6 +95,8 @@ export function buildAsk(item, guess) {
 // specific-before-general (e.g. 'Budgets OVER' before 'Budgets').
 const LINE_EMOJI = [
   [/^(Snapshot|Net worth)/i, '📊'],
+  [/^Influx overdue/i, '🚨'],
+  [/^Paystub/i, '📄'],
   [/^INFLUX/i, '💰'],
   [/^WINDFALL/i, '💰'],
   [/^Tax/i, '🧾'],
@@ -121,58 +123,128 @@ function emojiFor(line) {
   return '•';
 }
 
-// Heartbeat lines group into visual paragraphs: data plumbing (sync, matching,
-// valuations, loans), then the money plan (tax, influx, debts, budgets, bills),
-// then account flags (Schwab), then the snapshot. A line that matches no rule
-// inherits the section of the line above it, so unknown lines never force a break.
-const SECTION_RULES = [
-  [/^Snapshot/i, 'snapshot'],
-  [/^(Tax|INFLUX|Influx|WINDFALL|Debts|Revolving|STRAGGLER|Straggler|Bills|Budget)/i, 'plan'],
-  [/^(Schwab|Backup)/i, 'flags'],
-];
+// The daily heartbeat, v2 (2026-08-10, "too smashed together" feedback): signal
+// first, noise compressed. Order: snapshot headline, attention items, plan
+// lines, then all routine plumbing collapsed to one quiet line. Pure; exported
+// for tests. Unknown lines fail OPEN into the plan section verbatim — a line
+// the compressor does not recognize must never be dropped.
 
-function sectionOf(line, prev) {
-  for (const [re, key] of SECTION_RULES) if (re.test(line)) return key;
-  return prev ?? 'data';
+// Routine plumbing line -> short token, or null when the line is not routine.
+function plumbingToken(line) {
+  let m;
+  if ((m = /^Sync: (\d+) imported\.?$/.exec(line))) return `sync ${m[1]}`;
+  if ((m = /^Matching: (\d+) transfers matched, (\d+) ambiguous queued\.?$/.exec(line))) return `match ${m[1]} · ${m[2]} held`;
+  if ((m = /^Matching: (\d+) ambiguous queued\.?$/.exec(line))) return `match ${m[1]} held`;
+  if ((m = /^Valuations: (\d+) account balances? ingested\.?$/.exec(line))) return `val ${m[1]}`;
+  if (/^Loans: \d+ loan balance\(s\) already exact\.?$/.test(line)) return 'loans ✓';
+  if (/^Loans: \d+ loan balance\(s\) trued to the feed\.?$/.test(line)) return 'loans trued ✓';
+  if ((m = /^Budgets: (\d+) transaction\(s\) assigned\.?$/.exec(line))) return `budgets ${m[1]}`;
+  if (/^no new transactions to categorize\.?$/i.test(line)) return '0 to review';
+  if ((m = /^(\d+) auto-categorized, (\d+) need your review\.?$/.exec(line))) return `${m[1]} categorized · ${m[2]} to review`;
+  return null;
 }
 
-// The daily heartbeat as a sectioned embed instead of a wall of bare text. Pure;
-// exported for tests. Money strings are tidied at render time (the backstop for any
-// long-precision Firefly amount that slipped into a composed line), each line gets a
-// section emoji, blank lines separate the section groups, and the color reflects
-// whether anything needs attention.
+// Shorten one stale-feed name: drop machine prefixes and as-of parentheticals.
+function shortStaleName(name) {
+  return name
+    .trim()
+    .replace(/^bank:\d+:/, '')
+    .replace(/^valuation:/, '')
+    .replace(/\s*\(as of [^)]*\)/, '')
+    .trim();
+}
+
+function compressStaleList(names) {
+  let list = names.map(shortStaleName).filter(Boolean);
+  // schwab-positions/analytics-only is detail of the schwab entry; once is enough.
+  if (list.includes('schwab')) list = list.filter((n) => !/^schwab-positions/.test(n));
+  list = [...new Set(list)];
+  if (list.length > 3) list = [...list.slice(0, 2), `+${list.length - 2} more`];
+  return list.join(', ');
+}
+
+// Composed lines sometimes repeat their own prefix ("Tax set-aside: Tax
+// set-aside short ...", "Influx overdue: OVERDUE: ..."); render it once.
+function dedupePrefix(line) {
+  return line
+    .replace(/^Tax set-aside: Tax set-aside /, 'Tax set-aside: ')
+    .replace(/^Influx overdue: OVERDUE: /, 'Influx OVERDUE: ')
+    .replace(/^Playbook flag: STRAGGLER/, 'STRAGGLER');
+}
+
 export function buildHeartbeat(text) {
   const raw = tidyMoney(text).split('\n').filter((l) => l.trim() !== '');
   const first = raw.shift() ?? '';
-  // Two code paths (analytics + credential check) can both flag Schwab auth on the
-  // same run; one nag is enough.
-  let schwabFlagSeen = false;
-  const lines = raw.filter((l) => {
-    if (!/^Schwab flag:/i.test(l)) return true;
-    if (schwabFlagSeen) return false;
-    schwabFlagSeen = true;
-    return true;
-  });
-  const attention = lines.some((l) => /failed|STALE|flag|skipped|drift|OVER|STRAGGLER/i.test(l)) || /failed/i.test(first);
-  const body = [];
-  let prev = null;
-  for (const l of lines) {
-    const sec = sectionOf(l, prev);
-    if (prev !== null && sec !== prev) body.push('');
-    body.push(`${emojiFor(l)} ${l}`);
-    prev = sec;
+
+  let schwabChronic = null; // the weekly token nag: one compact quiet line
+  const plumbing = [];
+  const attention = [];
+  const plan = [];
+  let snapshotMain = null;
+  let snapshotAux = null;
+  let staleLine = null;
+
+  for (const l of raw) {
+    if (/^Schwab flag: Schwab (analytics )?token (missing or )?expired/i.test(l)) {
+      schwabChronic = '⚠️ Schwab token expired · npm run schwab-auth';
+      continue;
+    }
+    const m = /^Snapshot: net worth (\$[\d,.]+), DTI ([\d.]+%)( \(partial basis\))?\.?\s*(.*)$/.exec(l);
+    if (m) {
+      snapshotMain = `📊 Net worth ${m[1]} · DTI ${m[2]}${m[3] ? ' (partial)' : ''}`;
+      const aux = [];
+      const fm = /(\d+) data flags/.exec(m[4] || '');
+      if (fm) aux.push(`${fm[1]} flags (npm run snapshot)`);
+      const sm = /STALE: (.*)$/.exec(m[4] || '');
+      if (sm) aux.push(`stale: ${compressStaleList(sm[1].split(','))}`);
+      if (aux.length) snapshotAux = `⚠️ ${aux.join(' · ')}`;
+      continue;
+    }
+    if (/^STALE FEEDS: /.test(l)) {
+      staleLine = `⚠️ stale feed: ${compressStaleList(l.replace(/^STALE FEEDS: /, '').split(','))}`;
+      continue;
+    }
+    const token = plumbingToken(l);
+    if (token) {
+      plumbing.push(token);
+      continue;
+    }
+    // Loud lines: anything demanding action or reporting an abnormal condition.
+    if (/WINDFALL|INFLUX|OVERDUE|STRAGGLER|FAILED|failed|Budgets >80%|Budgets OVER|Paystub:|Reconcile|flag:|drift/i.test(l)) {
+      attention.push(`${emojiFor(l)} ${dedupePrefix(l)}`);
+      continue;
+    }
+    plan.push(`${emojiFor(l)} ${dedupePrefix(l)}`);
   }
+
   // The title comes from the message itself (Fincore daily, Fincore backup, ...);
   // hardcoding one job's name would mislabel the others' failures.
   const titleMatch = first.match(/^(Fincore [a-z]+)\b:?\s*/i);
   const head = titleMatch ? first.slice(titleMatch[0].length) : first;
+  const headToken = plumbingToken(head.trim());
+  if (headToken) plumbing.unshift(headToken); // routine head counts join the quiet line
+
+  const groups = [];
+  if (snapshotMain) groups.push([snapshotMain]);
+  if (attention.length) groups.push(attention);
+  if (plan.length) groups.push(plan);
+  const quiet = [];
+  if (plumbing.length) quiet.push(`🔧 ${plumbing.join(' · ')}`);
+  if (staleLine) quiet.push(staleLine);
+  if (snapshotAux) quiet.push(snapshotAux);
+  if (schwabChronic) quiet.push(schwabChronic);
+  if (quiet.length) groups.push(quiet);
+
+  const hasAttention =
+    attention.length > 0 || staleLine !== null || snapshotAux !== null || /FAILED|failed/.test(first);
+  const body = groups.map((g) => g.join('\n')).join('\n\n');
   const embed = {
     title: titleMatch ? titleMatch[1] : 'Fincore',
-    description: [head, ...(head.trim() !== '' && body.length ? [''] : []), ...body]
-      .filter((l, i, a) => l.trim() !== '' || (i > 0 && a[i - 1].trim() !== ''))
+    description: [...(headToken || head.trim() === '' ? [] : [head, '']), body]
       .join('\n')
+      .trim()
       .slice(0, 4000),
-    color: attention ? 0xe0a500 : 0x2e8b57,
+    color: hasAttention ? 0xe0a500 : 0x2e8b57,
   };
   return { embeds: [embed] };
 }
