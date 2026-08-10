@@ -127,6 +127,24 @@ assessment/deed document is in hand.)
   arrears/true-up cadence, but confirm with Empower/payroll when switching the
   deferral to a percentage (ACTION above).
 
+## Roth IRA (Vanguard, discovered by fincore 2026-08-10)
+
+- **Bryson has a Vanguard Roth IRA** (Roth IRA Brokerage ...3830474, ~$5,987 as
+  of 2026-08-07), active since at least 2023, plus an empty taxable brokerage
+  (...2794). It predates fincore and was never in net worth until discovery.
+- Tax-year 2024 was **maxed** ($7,000 on 2024-03-26). Calendar-2025
+  contributions $2,500; calendar-2026 (Jan-Mar) $2,000; none since 2026-03-09.
+  **VERIFY tax-year designation** (Vanguard's contributions-by-tax-year screen)
+  before trusting any per-year total — the Jan-Mar 2026 deposits could be
+  designated 2025. Supersedes the playbook's earlier "2025 Roth space forfeited
+  entirely" claim, which was written before this account was known.
+- Holdings are ~87% MVIS (MicroVision) after a 1-for-15 reverse split
+  (2026-08-03) and a large drawdown; detail and cost-basis reconstruction in
+  the vault
+  ([Vanguard Roth dossier](../../obsidian-vault/projects/fincore/reference/2026-08-10-vanguard-roth-dossier.md)).
+- The playbook's Roth 2026 goal ($7,500 by 2027-04-15) counts THIS account;
+  fincore's `roth_2026_funded` meta must be set from the verified designation.
+
 ## Insurance (non-health) & estate
 
 - **Ameritas dental = ONE policy, #240058621-D** (Ameritas Life Insurance Corp.,
