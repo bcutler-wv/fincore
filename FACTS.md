@@ -111,10 +111,12 @@ assessment/deed document is in hand.)
 - Plan: Blenko Glass Company, Inc. 401(k) (Empower/FASCORE; highlights doc in
   `documents/benefits/`)
 - **Match formula: 100% of deferrals up to 3% of compensation.**
-- Current deferral: **$50/wk FLAT** — set when 3% of salary equaled $50; at the
-  current ~$1,818.35/wk gross, 3% = ~$54.55/wk, so the flat amount now leaves
-  ~**$235/yr of match unclaimed**. ACTION (2026-07-20): switch the deferral to a
-  PERCENTAGE (>=3%) so it tracks raises automatically.
+- Current deferral: **$60/wk FLAT** (raised from $50 effective the 2026-08-06
+  check, closing the ~$235/yr unclaimed-match gap; 3% of the $1,818.35 gross is
+  ~$54.55, so $60 now sits ABOVE the match cap). The 08-06 stub shows a "401k
+  Flat Match $60.00" line — if the match truly credits $60 rather than ~$54.55,
+  practice is more generous than the plan-highlights formula; watch the next
+  stubs. Still flat, not a percentage, so re-check after any raise.
 - **Vesting: 3-year cliff on employer money** (0% until 3 years of service, then
   100%). Employee deferrals always 100% vested. Bryson confirmed 3+ years of
   Blenko service (2026-07-20) — **fully vested**; the Empower balance is
