@@ -34,7 +34,7 @@ The single source of truth for household, entity, and tax-profile facts. Rules:
 |---|---|---|---|
 | Blenko Glass Co., Inc. | Bryson | W-2 employee (officer salary, weekly) | 401k: see Retirement below |
 | WV CSP, LLC dba Redshirt Cloud | Bryson | single-member LLC, Schedule C (marketing/MSP) | lumpy owner draws ~5–6 wk cadence; Neptune Political is a CLIENT of Redshirt, not a household entity |
-| Barboursville Massage | Mikalia | sole proprietorship, Schedule C | real employer business (~$95k/yr wages paid); operationally out of fincore scope |
+| Barboursville Massage, LLC | Mikalia | single-member LLC, Schedule C (disregarded) | real employer business (~$95k/yr wages paid); operationally out of fincore scope |
 
 Blenko, Redshirt, and Barboursville Massage are INCOME SOURCES feeding personal
 accounts. fincore never does business accounting for any of them.
@@ -190,3 +190,8 @@ assessment/deed document is in hand.)
 - **2026-07-19:** file created. Household facts recorded, including Maya
   (b. 2026-06-27, first dependent, from tax year 2026). Same day: adult birth
   dates and marriage date (2022-10-08) added.
+- **2026-09-02:** Barboursville Massage corrected from sole proprietorship to
+  **Barboursville Massage, LLC** (single-member, long since formed, still
+  Schedule C disregarded) — per Bryson during S-corp strategy discussion. Both
+  household businesses are therefore existing LLCs; an S election needs only
+  Form 2553, no new entity.
