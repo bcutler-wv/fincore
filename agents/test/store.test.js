@@ -13,6 +13,7 @@ import {
   baselineState,
   lockBaseline,
   correctBaseline,
+  adjustBaselineScope,
   upsertSeriesRow,
   latestPaystub,
   touchFeed,
@@ -101,6 +102,62 @@ test('baseline lock: once only, corrections inside the window, frozen after', ()
   const tLate = new Date(t0.getTime() + (BASELINE_CORRECTION_DAYS + 1) * 86400000);
   assert.equal(baselineState(db, tLate).correctable, false);
   assert.throws(() => correctBaseline(db, { netWorth: 1, dti: 0.1, reason: 'x', actor: 'test' }, tLate), /frozen/);
+});
+
+test('scope adjustment shifts the frozen baseline by a delta, audited, after the window', () => {
+  const db = memStore();
+  const t0 = new Date('2026-07-18T12:00:00Z');
+  lockBaseline(db, { snapshotDate: '2026-07-18', netWorth: 100000, dti: 0.154, dtiBasis: 'b', actor: 'test' }, t0);
+
+  // Well past the correction window: correctBaseline refuses, scope adjust does not.
+  const tLate = new Date(t0.getTime() + (BASELINE_CORRECTION_DAYS + 30) * 86400000);
+  assert.throws(() => correctBaseline(db, { netWorth: 1, dti: 0.1, reason: 'x', actor: 'test' }, tLate), /frozen/);
+
+  const out = adjustBaselineScope(db, { delta: 2500, reason: 'spouse personal accounts join', actor: 'test' }, tLate);
+  assert.equal(out.netWorth, 102500);
+
+  const row = db.prepare('SELECT * FROM nw_dti_series WHERE is_baseline = 1').get();
+  assert.equal(row.snapshot_date, '2026-07-18');
+  assert.equal(row.net_worth, 102500);
+  assert.equal(row.dti, 0.154); // untouched when not re-based
+
+  const a = db.prepare("SELECT * FROM audit_log WHERE action = 'baseline.scope_adjust'").get();
+  assert.ok(a, 'audit row written');
+  assert.equal(JSON.parse(a.before_json).net_worth, 100000);
+  const after = JSON.parse(a.after_json);
+  assert.equal(after.delta, 2500);
+  assert.equal(after.reason, 'spouse personal accounts join');
+
+  assert.equal(getMeta(db, 'baseline_scope_adjust_total'), '2500');
+});
+
+test('scope adjustments accumulate and may re-base DTI', () => {
+  const db = memStore();
+  lockBaseline(db, { snapshotDate: '2026-07-18', netWorth: 100000, dti: 0.154, dtiBasis: 'b', actor: 'test' });
+
+  adjustBaselineScope(db, { delta: 2500, reason: 'spouse accounts', actor: 'test' });
+  adjustBaselineScope(db, { delta: -700, dti: 0.171, dtiBasis: 'household incl. spouse cards', reason: 'spouse card debt', actor: 'test' });
+
+  const row = db.prepare('SELECT * FROM nw_dti_series WHERE is_baseline = 1').get();
+  assert.equal(row.net_worth, 101800);
+  assert.equal(row.dti, 0.171);
+  assert.equal(row.dti_basis, 'household incl. spouse cards');
+  assert.equal(getMeta(db, 'baseline_scope_adjust_total'), '1800');
+});
+
+test('scope adjustment refuses without a lock, a zero/NaN delta, or a missing reason', () => {
+  const db = memStore();
+  assert.throws(() => adjustBaselineScope(db, { delta: 100, reason: 'r', actor: 'test' }), /no baseline locked/);
+
+  lockBaseline(db, { snapshotDate: '2026-07-18', netWorth: 100000, dti: 0.154, dtiBasis: 'b', actor: 'test' });
+  assert.throws(() => adjustBaselineScope(db, { delta: 0, reason: 'r', actor: 'test' }), /delta/);
+  assert.throws(() => adjustBaselineScope(db, { delta: NaN, reason: 'r', actor: 'test' }), /delta/);
+  assert.throws(() => adjustBaselineScope(db, { delta: 100, reason: '', actor: 'test' }), /reason/);
+  assert.throws(() => adjustBaselineScope(db, { delta: 100, reason: 'r' }), /actor/);
+
+  // Nothing wrote through the failed calls.
+  assert.equal(db.prepare('SELECT net_worth FROM nw_dti_series WHERE is_baseline = 1').get().net_worth, 100000);
+  assert.equal(db.prepare("SELECT COUNT(*) c FROM audit_log WHERE action = 'baseline.scope_adjust'").get().c, 0);
 });
 
 test('the locked baseline row is write-protected against plain snapshots', () => {

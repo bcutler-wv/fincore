@@ -436,6 +436,48 @@ export function correctBaseline(db, { netWorth, dti, dtiBasis, inputs, reason, a
   tx();
 }
 
+// Deliberate scope change (e.g. spouse accounts joining): shift the frozen
+// baseline by the joining balances so post-join deltas stay attributable to
+// behavior, not to the scope change itself. Unlike correctBaseline this is
+// allowed at any time after lock — it is not a correction of a mismeasured
+// past, it is a re-basing of what "the household" means, and it is only honest
+// BECAUSE the shift equals exactly what joined. Every adjustment is audited and
+// the cumulative shift is kept in meta so reports can disclose it.
+export function adjustBaselineScope(db, { delta, dti = null, dtiBasis = null, reason, actor }, now = new Date()) {
+  const state = baselineState(db, now);
+  if (!state.locked) throw new Error('no baseline locked; use lockBaseline');
+  if (!Number.isFinite(delta) || delta === 0) throw new Error('delta must be a nonzero finite number');
+  if (!reason) throw new Error('reason is required');
+  if (!actor) throw new Error('actor is required');
+
+  const snapshotDate = getMeta(db, 'baseline_snapshot_date');
+  const before = db
+    .prepare('SELECT net_worth, dti, dti_basis FROM nw_dti_series WHERE snapshot_date = ?')
+    .get(snapshotDate);
+  const netWorth = before.net_worth + delta;
+  const newDti = dti === null ? before.dti : dti;
+  const newDtiBasis = dtiBasis === null ? before.dti_basis : dtiBasis;
+  const priorTotal = Number(getMeta(db, 'baseline_scope_adjust_total') || 0);
+
+  const tx = db.transaction(() => {
+    upsertSeriesRow(
+      db,
+      { snapshotDate, netWorth, dti: newDti, dtiBasis: newDtiBasis, isBaseline: 1 },
+      { allowBaselineWrite: true }
+    );
+    setMeta(db, 'baseline_scope_adjust_total', String(priorTotal + delta));
+    audit(db, {
+      actor,
+      action: 'baseline.scope_adjust',
+      target: `nw_dti_series:${snapshotDate}`,
+      before,
+      after: { netWorth, dti: newDti, dtiBasis: newDtiBasis, delta, reason },
+    });
+  });
+  tx();
+  return { netWorth };
+}
+
 // --- series ---
 
 // Upsert one series row. The locked baseline row is WRITE-PROTECTED here, at the
