@@ -5,7 +5,7 @@
 import 'dotenv/config';
 import * as firefly from './lib/firefly.js';
 import { categorizeBatch } from './lib/anthropic.js';
-import { sendAsk, sendHeartbeat } from './lib/discord.js';
+import { sendHeartbeat } from './lib/discord.js';
 import { compactStale } from './lib/format.js';
 
 // The store (better-sqlite3, a native addon) is loaded lazily so a missing or
@@ -131,10 +131,8 @@ async function main() {
         applied += 1;
         auditCategorization(auditDb, item, g);
       } else {
-        // Ask first, then tag. The review tag makes future runs skip the transaction,
-        // so it must never be applied unless the human was actually asked; a failed
-        // tag after a sent ask just means a duplicate ask tomorrow, which is benign.
-        await sendAsk(item, g);
+        // Quiet mode (2026-09-11): no Discord ask. The review tag IS the queue;
+        // uncertain transactions wait there for an on-demand session review.
         await firefly.markReview(item.tx_id, item.journal_id, { knownTags: item.existing_tags });
         asked += 1;
       }
@@ -146,7 +144,7 @@ async function main() {
   if (auditDb) auditDb.close();
 
   const overflow = items.length >= CAP ? ` Cap reached (${CAP}); more will process tomorrow.` : '';
-  let summary = `Fincore daily: ${applied} auto-categorized, ${asked} need your review.${overflow}`;
+  let summary = `Fincore daily: ${applied} auto-categorized, ${asked} queued for review.${overflow}`;
   if (failures.length) summary += `\n${failures.length} errors: ${failures.slice(0, 5).join('; ')}`;
   summary += syncLines;
   summary += await dailyStoreLines();

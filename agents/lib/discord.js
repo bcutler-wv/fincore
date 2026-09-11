@@ -140,7 +140,7 @@ function plumbingToken(line) {
   if (/^Loans: \d+ loan balance\(s\) trued to the feed\.?$/.test(line)) return 'loans trued ✓';
   if ((m = /^Budgets: (\d+) transaction\(s\) assigned\.?$/.exec(line))) return `budgets ${m[1]}`;
   if (/^no new transactions to categorize\.?$/i.test(line)) return '0 to review';
-  if ((m = /^(\d+) auto-categorized, (\d+) need your review\.?$/.exec(line))) return `${m[1]} categorized · ${m[2]} to review`;
+  if ((m = /^(\d+) auto-categorized, (\d+) (?:need your review|queued for review)\.?$/.exec(line))) return `${m[1]} categorized · ${m[2]} to review`;
   return null;
 }
 
@@ -246,7 +246,7 @@ export function buildHeartbeat(text) {
       .slice(0, 4000),
     color: hasAttention ? 0xe0a500 : 0x2e8b57,
   };
-  return { embeds: [embed] };
+  return { embeds: [embed], hasAttention };
 }
 
 function send(body) {
@@ -257,6 +257,14 @@ export async function sendAsk(item, guess) {
   return send(buildAsk(item, guess));
 }
 
+// Quiet mode (2026-09-11 decision): Discord only speaks when something needs a
+// human — stale/disconnected feeds, failures, loud playbook events. Routine
+// success is silent; reporting moved to on-demand sessions. HEARTBEAT_MODE=always
+// restores the old daily send as a rollback valve.
 export async function sendHeartbeat(text) {
-  return send(buildHeartbeat(text));
+  const { embeds, hasAttention } = buildHeartbeat(text);
+  if (!hasAttention && process.env.HEARTBEAT_MODE !== 'always') {
+    return { skipped: true };
+  }
+  return send({ embeds });
 }

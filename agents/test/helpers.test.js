@@ -137,6 +137,24 @@ test('buildHeartbeat v2 leads with the snapshot and colors by attention', () => 
   assert.ok(backup.embeds[0].description.includes('FAILED'));
 });
 
+test('buildHeartbeat exposes hasAttention so quiet mode can gate the send', () => {
+  // Calm daily: routine counts + healthy snapshot -> no attention, no send.
+  const calm = buildHeartbeat('Fincore daily: 3 auto-categorized, 2 queued for review.\nSnapshot: net worth $10.00, DTI 30.0%.');
+  assert.equal(calm.hasAttention, false);
+
+  // A stale feed is exactly what Discord is still for.
+  const stale = buildHeartbeat('Fincore daily: 0 auto-categorized, 0 queued for review.\nSTALE FEEDS: bank:1:Checking (9d)');
+  assert.equal(stale.hasAttention, true);
+
+  // Failures always alert, whichever job they come from.
+  const failed = buildHeartbeat('Fincore backup FAILED: mount missing');
+  assert.equal(failed.hasAttention, true);
+
+  // Loud playbook lines (windfall, overdue influx, reconcile drift) alert too.
+  const loud = buildHeartbeat('Fincore daily: 1 auto-categorized, 0 queued for review.\nInflux overdue: OVERDUE: day 61 of the draw cycle');
+  assert.equal(loud.hasAttention, true);
+});
+
 test('buildHeartbeat v2 compresses plumbing, keeps attention loud, dedupes prefixes and the Schwab nag', () => {
   const msg = [
     'Fincore daily: no new transactions to categorize.',
