@@ -28,7 +28,10 @@ The single source of truth for household, entity, and tax-profile facts. Rules:
 - Wife's separate bank accounts (CNB ...0619, ...0240): **joining fincore —
   decided 2026-09-11**, integration pending (Bridge connection for her CNB login,
   Firefly accounts, baseline scope adjustment). Supersedes the 2026-07-18
-  external-by-decision status.
+  external-by-decision status. **Scope boundary (2026-09-11): personal accounts
+  and her credit cards only.** Barboursville business accounts stay OUT until
+  the personal integration is proven; CNB Joint is already tracked and is half
+  hers.
 
 ## Income sources & entities
 
