@@ -25,8 +25,10 @@ The single source of truth for household, entity, and tax-profile facts. Rules:
   the 2026 return with the child tax credit)
 - Tax household size for ACA/FPL purposes: **3** (from 2026)
 - Address: 129 Jefferson Park Dr, Huntington, WV 25705
-- Wife's separate bank accounts (CNB ...0619, ...0240) are **external to fincore**
-  by explicit decision (2026-07-18); her finances may join later.
+- Wife's separate bank accounts (CNB ...0619, ...0240): **joining fincore —
+  decided 2026-09-11**, integration pending (Bridge connection for her CNB login,
+  Firefly accounts, baseline scope adjustment). Supersedes the 2026-07-18
+  external-by-decision status.
 
 ## Income sources & entities
 
@@ -34,7 +36,7 @@ The single source of truth for household, entity, and tax-profile facts. Rules:
 |---|---|---|---|
 | Blenko Glass Co., Inc. | Bryson | W-2 employee (officer salary, weekly) | 401k: see Retirement below |
 | WV CSP, LLC dba Redshirt Cloud | Bryson | single-member LLC, Schedule C (marketing/MSP) | lumpy owner draws ~5–6 wk cadence; Neptune Political is a CLIENT of Redshirt, not a household entity |
-| Barboursville Massage, LLC | Mikalia | single-member LLC, Schedule C (disregarded) | real employer business (~$95k/yr wages paid); operationally out of fincore scope |
+| Barboursville Massage, LLC | Mikalia | single-member LLC, Schedule C (disregarded) | real employer business (~$95k/yr wages paid); operationally out of fincore scope. **As of 2026-09-11: Mikalia not currently working** (post-Maya); business running just above break-even, owner draws thin — 2026 Schedule C will land well below 2025's $74k net |
 
 Blenko, Redshirt, and Barboursville Massage are INCOME SOURCES feeding personal
 accounts. fincore never does business accounting for any of them.
@@ -190,6 +192,10 @@ assessment/deed document is in hand.)
 - **2026-07-19:** file created. Household facts recorded, including Maya
   (b. 2026-06-27, first dependent, from tax year 2026). Same day: adult birth
   dates and marriage date (2022-10-08) added.
+- **2026-09-11:** Mikalia recorded as not currently working (post-Maya);
+  Barboursville Massage just above break-even, 2026 net will land well below
+  2025. Decision: her CNB accounts (...0619, ...0240) join fincore; integration
+  pending. Supersedes the 2026-07-18 external-accounts decision.
 - **2026-09-02:** Barboursville Massage corrected from sole proprietorship to
   **Barboursville Massage, LLC** (single-member, long since formed, still
   Schedule C disregarded) — per Bryson during S-corp strategy discussion. Both
