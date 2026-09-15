@@ -99,14 +99,16 @@ assessment/deed document is in hand.)
   freed cash flow at maturity, Sep 2028.
 - Vehicle value is NOT carried as an asset in net worth (conservative; a manual
   asset could be added under SPEC Phase 15 completeness if desired).
-- **WV personal property tax: COMPLIANCE GAP (found 2026-07-20).** Cabell portal
-  shows PP tickets under Bryson only through tax year 2023 ($263.94/half); nothing
-  for 2024-2026 despite owning the Outback + Miata. NEXT STEPS: (1) search the
-  portal under Mikalia's name; (2) if truly unfiled, call the Cabell County
-  ASSESSOR to file/catch up (annual filing due Oct 1). Notes: WV requires a paid
-  PP receipt for registration renewal, and the WV motor-vehicle tax credit
-  (2024+) makes timely-paid vehicle tax ~cost-neutral on the state return —
-  filing properly costs almost nothing net.
+- **WV personal property tax: gap FILED 2026-09-15** (found 2026-07-20; caught up
+  by phone with the Assessor, account 00140593, District 01 Barboursville).
+  Three tickets, all unpaid, totaling **$1,297.31 if paid by 09/30/2026**:
+  2024 #0100002340S $561.68 (delinquent), 2025 #0100002016S $387.30 (delinquent),
+  2026 #0100001100S $348.33 (first half $186.22 due 09/30/2026, second half
+  $162.11 due 03/01/2027). Delinquent years accrue interest past 09/30. Firefly
+  bill "Cabell County PP tax catch-up 2024-2026" tracks it; tickets archived at
+  `documents/property/cutler-pp-{2024,2025,2026}.pdf`. CPA note for Crowe: the
+  WV motor-vehicle credit requires TIMELY payment — the 2024/2025 delinquent
+  payments likely do not qualify; 2026 paid by its due dates should.
 
 **1991 Mazda Miata** — owned outright, no loan. Estimated value $4-6k (Bryson,
 2026-07-20). Not carried in net worth (same conservative treatment as the Outback).
